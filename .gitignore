@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Supabase
+.supabase/
+supabase-cli/
+
+# OS
+Thumbs.db
+
+# Misc
+*.log
+
+# Documentation with potential secrets (local only)
+CHECKLIST.md
+KORA_*.md
+DEPLOYMENT_*.md
+DEPLOY_*.md
+DONE.md
+QUICK_REFERENCE.md
+README_DEPLOYMENT.md
+SET_SECRETS_VIA_DASHBOARD.md
+START_HERE_KORA_FIX.md
+deploy-kora-integration.md
+test-deployed-functions.html
+test-kora-api.html
