@@ -114,7 +114,7 @@ const formatCountryName = (country: string): string => {
 }
 
 export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [rentals, setRentals] = useState<Rental[]>([])
@@ -133,7 +133,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
   const [rentalMessages, setRentalMessages] = useState<Record<string, RentalMessage[]>>({})
   const [checkingRentals, setCheckingRentals] = useState<Set<string>>(new Set())
   const [esims, setEsims] = useState<ESIM[]>([])
-  const [esimCountry, setEsimCountry] = useState('usa')
+  const [esimCountry, setEsimCountry] = useState('US')
   const [esimData, setEsimData] = useState('1GB')
   const [esimDays, setEsimDays] = useState(7)
 
@@ -368,16 +368,35 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
   }
 
   const buyNumber = async () => {
-    if (!profile) return
+    // Check if profile is loaded
+    if (!profile) {
+      addToast('Loading wallet information... Please wait', 'warning')
+      return
+    }
+
+    // Check if service and country are selected
+    if (!selectedService || !selectedCountry) {
+      addToast('Please select a service and country first', 'warning')
+      return
+    }
     
     const currentPrice = getCurrentPrice()
+    
+    // Check balance
+    if (currentPrice <= 0) {
+      addToast('Invalid price for selected service', 'error')
+      return
+    }
+    
     if (profile.balance_naira < currentPrice) {
-      alert(`Insufficient balance. You need ₦${currentPrice} but have ₦${profile.balance_naira}`)
+      addToast(`❌ Insufficient balance. You need ₦${currentPrice.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`, 'error')
       return
     }
     
     setLoading(true)
     try {
+      addToast('Processing purchase... Please wait', 'info')
+      
       const { data, error } = await supabase.functions.invoke('purchase-number', {
         body: {
           service: selectedService,
@@ -388,7 +407,12 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        alert(`Purchase failed: ${error.message || 'Unable to connect to server'}`)
+        addToast(`❌ Purchase failed: ${error.message || 'Unable to connect to server'}`, 'error')
+        return
+      }
+
+      if (!data) {
+        addToast('❌ No response from server. Please try again.', 'error')
         return
       }
 
@@ -397,22 +421,24 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         await Promise.all([loadProfile(), loadOrders()])
         
         // Show success message with details
-        alert(`✅ ${data.message}\n\n📱 Phone: ${data.phone_number}\n💰 Cost: ₦${data.cost}\n💳 Balance: ₦${data.remaining_balance}\n\nSend your OTP to this number now!`)
+        addToast(`✅ ${data.message || 'Number purchased'} - Phone: ${data.phone_number}`, 'success')
       } else {
         // Handle different error types with professional messaging
         let errorMessage = data.error || 'Unknown error occurred'
         
         if (data.refunded) {
-          errorMessage = `❌ ${errorMessage}\n\n✅ Refund: ₦${data.cost || currentPrice} has been automatically credited back to your wallet.`
+          errorMessage = `Refund: ₦${data.cost || currentPrice} has been automatically credited back to your wallet.`
           // Refresh balance to show refund
           await loadProfile()
+          addToast(`✅ ${errorMessage}`, 'success')
+        } else {
+          addToast(`❌ ${errorMessage}`, 'error')
         }
-        
-        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error buying number:', error)
-      alert(`Purchase failed: ${error.message || 'Network error. Please try again.'}`)
+      const errorMsg = error instanceof Error ? error.message : 'Network error. Please check your connection and try again.'
+      addToast(`❌ Purchase failed: ${errorMsg}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -425,7 +451,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
     const totalCost = dailyRate * rentalDays
     
     if (profile.balance_naira < totalCost) {
-      alert(`Insufficient balance. You need ₦${totalCost.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`)
+      addToast(`Insufficient balance. You need ₦${totalCost.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`, 'error')
       return
     }
     
@@ -441,7 +467,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        alert(`Purchase failed: ${error.message || 'Unable to connect to server'}`)
+        addToast(`Purchase failed: ${error.message || 'Unable to connect to server'}`, 'error')
         return
       }
 
@@ -450,22 +476,23 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         await Promise.all([loadProfile(), loadRentals()])
         
         // Show success message with details
-        alert(`✅ ${data.message}\n\n📱 Phone: ${data.phone_number}\n⏰ Duration: ${data.days} days\n💰 Cost: ₦${data.cost.toLocaleString()}\n💳 Balance: ₦${data.remaining_balance.toLocaleString()}\n\nYour rental is now active!`)
+        addToast(`${data.message} - Phone: ${data.phone_number}`, 'success')
       } else {
         // Handle different error types with professional messaging
         let errorMessage = data.error || 'Unknown error occurred'
         
         if (data.refunded) {
-          errorMessage = `❌ ${errorMessage}\n\n✅ Refund: ₦${data.cost || totalCost} has been automatically credited back to your wallet.`
+          errorMessage = `Refund: ₦${data.cost || totalCost} has been automatically credited back to your wallet.`
           // Refresh balance to show refund
           await loadProfile()
+          addToast(errorMessage, 'success')
+        } else {
+          addToast(errorMessage, 'error')
         }
-        
-        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error buying rental:', error)
-      alert(`Purchase failed: ${error.message || 'Network error. Please try again.'}`)
+      addToast(`Purchase failed: ${error instanceof Error ? error.message : 'Network error. Please try again.'}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -473,7 +500,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
   const getFreeSMS = async () => {
     if (!selectedService || !selectedCountry) {
-      alert('Please select a service and country')
+      addToast('Please select a service and country', 'warning')
       return
     }
     
@@ -489,22 +516,23 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        alert(`Request failed: ${error.message || 'Unable to connect to server'}`)
+        addToast(`❌ Request failed: ${error.message || 'Unable to connect to server'}`, 'error')
         return
       }
 
-      if (data.success) {
+      if (data && data.success) {
         // Refresh orders
         await loadOrders()
         
         // Show success message with details
-        alert(`✅ ${data.message}\n\n📱 Phone: ${data.phone_number}\n🆓 Cost: FREE (Test)\n\nSend your OTP to this number now!`)
+        addToast(`✅ ${data.message || 'Free number received'} - Phone: ${data.phone_number}`, 'success')
       } else {
-        alert(data.error || 'No free numbers available for this service/country combination')
+        addToast(`❌ ${data?.error || 'No free numbers available for this service/country'}`, 'error')
       }
     } catch (error) {
       console.error('Error getting free SMS:', error)
-      alert(`Request failed: ${error.message || 'Network error. Please try again.'}`)
+      const errorMsg = error instanceof Error ? error.message : 'Network error. Please try again.'
+      addToast(`❌ Request failed: ${errorMsg}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -524,7 +552,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
     const totalCost = pricingMap[esimData] || 3000
     
     if (profile.balance_naira < totalCost) {
-      alert(`Insufficient balance. You need ₦${totalCost.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`)
+      addToast(`Insufficient balance. You need ₦${totalCost.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`, 'error')
       return
     }
     
@@ -541,7 +569,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        alert(`Purchase failed: ${error.message || 'Unable to connect to server'}`)
+        addToast(`Purchase failed: ${error.message || 'Unable to connect to server'}`, 'error')
         return
       }
 
@@ -550,22 +578,23 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         await Promise.all([loadProfile(), loadEsims()])
         
         // Show success message with details
-        alert(`✅ ${data.message}\n\n📶 Data: ${data.data_amount}\n⏰ Duration: ${data.days} days\n💰 Cost: ₦${data.cost.toLocaleString()}\n💳 Balance: ₦${data.remaining_balance.toLocaleString()}\n\nYour eSIM is ready to activate!`)
+        addToast(`${data.message} - Data: ${data.data_amount}`, 'success')
       } else {
         // Handle different error types with professional messaging
         let errorMessage = data.error || 'Unknown error occurred'
         
         if (data.refunded) {
-          errorMessage = `❌ ${errorMessage}\n\n✅ Refund: ₦${data.cost || totalCost} has been automatically credited back to your wallet.`
+          errorMessage = `Refund: ₦${data.cost || totalCost} has been automatically credited back to your wallet.`
           // Refresh balance to show refund
           await loadProfile()
+          addToast(errorMessage, 'success')
+        } else {
+          addToast(errorMessage, 'error')
         }
-        
-        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error buying eSIM:', error)
-      alert(`Purchase failed: ${error.message || 'Network error. Please try again.'}`)
+      addToast(`Purchase failed: ${error instanceof Error ? error.message : 'Network error. Please try again.'}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -598,10 +627,10 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         ))
         
         if (data.otp_code) {
-          alert(`🎉 OTP Received!\n\nCode: ${data.otp_code}\n\nThe code has been copied to your clipboard.`)
+          addToast(`OTP Received! Code: ${data.otp_code}`, 'success')
           navigator.clipboard.writeText(data.otp_code)
         } else if (data.timeout) {
-          alert(`⏰ Order Timeout\n\nNo SMS received within 15 minutes.\n\n✅ Refund: ₦${data.refunded_amount} has been credited to your wallet.`)
+          addToast(`Order Timeout - Refund: ₦${data.refunded_amount} credited to your wallet`, 'info')
           // Refresh balance to show refund
           await loadProfile()
         }
@@ -1126,16 +1155,16 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
                   onChange={(e) => setEsimCountry(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="usa">USA</option>
-                  <option value="uk">UK</option>
-                  <option value="canada">Canada</option>
-                  <option value="australia">Australia</option>
-                  <option value="france">France</option>
-                  <option value="germany">Germany</option>
-                  <option value="spain">Spain</option>
-                  <option value="italy">Italy</option>
-                  <option value="japan">Japan</option>
-                  <option value="mexico">Mexico</option>
+                  <option value="US">🇺🇸 USA</option>
+                  <option value="GB">🇬🇧 UK</option>
+                  <option value="CA">🇨🇦 Canada</option>
+                  <option value="AU">🇦🇺 Australia</option>
+                  <option value="FR">🇫🇷 France</option>
+                  <option value="DE">🇩🇪 Germany</option>
+                  <option value="ES">🇪🇸 Spain</option>
+                  <option value="IT">🇮🇹 Italy</option>
+                  <option value="JP">🇯🇵 Japan</option>
+                  <option value="MX">🇲🇽 Mexico</option>
                 </select>
               </div>
               
@@ -1236,35 +1265,53 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
                 {esim.status === 'ACTIVE' && esim.qr_code && (
                   <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm font-medium text-green-800 mb-2">
-                      📱 Activation Instructions
+                      📱 Activation Required
                     </p>
                     
-                    {esim.qr_code && (
-                      <div className="mb-3">
-                        <p className="text-xs text-green-700 mb-2">Scan this QR code with your device:</p>
-                        <img src={esim.qr_code} alt="eSIM QR Code" className="w-48 h-48 border border-green-300 rounded" />
-                      </div>
-                    )}
+                    <div className="mb-3 p-3 bg-yellow-50 border border-yellow-300 rounded">
+                      <p className="text-sm font-medium text-yellow-800 mb-2">
+                        ⚠️ Manual Activation Needed
+                      </p>
+                      <p className="text-xs text-yellow-700 mb-3">
+                        Your eSIM purchase was successful! To complete activation and receive your QR code, please contact our support team with your order details.
+                      </p>
+                      <a
+                        href={`https://t.me/bramkingnumber?text=Hi! I need to activate my eSIM for ${formatCountryName(esim.country)} - ${esim.data_amount} (Order ID: ${esim.id.slice(0, 8)})`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                      >
+                        📱 Contact Support on Telegram
+                      </a>
+                    </div>
                     
-                    {esim.activation_code && (
-                      <div className="mb-2">
-                        <p className="text-xs text-green-700 mb-1">Or use activation code:</p>
-                        <p className="text-sm font-mono bg-white p-2 rounded border border-green-300">
-                          {esim.activation_code}
-                        </p>
-                      </div>
-                    )}
-                    
-                    {esim.iccid && (
-                      <div>
-                        <p className="text-xs text-green-700 mb-1">ICCID:</p>
-                        <p className="text-xs font-mono text-gray-600">{esim.iccid}</p>
-                      </div>
-                    )}
-                    
-                    <p className="text-xs text-green-600 mt-2">
-                      Expires: {formatDate(esim.expires_at)}
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <p><strong>Order ID:</strong> {esim.id.slice(0, 8)}</p>
+                      <p><strong>Country:</strong> {formatCountryName(esim.country)}</p>
+                      <p><strong>Data:</strong> {esim.data_amount}</p>
+                      <p><strong>Duration:</strong> {esim.days} days</p>
+                      <p><strong>Cost:</strong> ₦{esim.cost.toLocaleString()}</p>
+                      <p><strong>Expires:</strong> {formatDate(esim.expires_at)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {esim.status === 'ACTIVE' && !esim.qr_code && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm font-medium text-yellow-800 mb-2">
+                      ⏳ Activation Pending
                     </p>
+                    <p className="text-xs text-yellow-700 mb-3">
+                      Your eSIM is being activated. Please contact support to complete activation.
+                    </p>
+                    <a
+                      href={`https://t.me/bramkingnumber?text=Hi! I need to activate my eSIM for ${formatCountryName(esim.country)} - ${esim.data_amount} (Order ID: ${esim.id.slice(0, 8)})`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+                    >
+                      📱 Contact Support on Telegram
+                    </a>
                   </div>
                 )}
 

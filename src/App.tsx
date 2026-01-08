@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient, Session } from '@supabase/supabase-js'
 import SMSDashboard from './components/SMSDashboard'
 import AuthForm from './components/AuthForm'
@@ -70,7 +70,7 @@ function AppContent() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">BramkingNumbers Dashboard</h1>
-              <p className="text-sm text-gray-600">Welcome, {session.user.email}</p>
+              <p className="text-sm text-gray-600">Welcome, {session?.user?.email}</p>
             </div>
             <div className="flex items-center space-x-4">
               <a
@@ -91,7 +91,7 @@ function AppContent() {
           </div>
         </div>
         
-        <SMSDashboard supabase={supabase} user={session.user} />
+        {session && <SMSDashboard supabase={supabase} user={session.user} />}
       </div>
     </div>
   )
