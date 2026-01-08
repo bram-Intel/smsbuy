@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Phone, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 import WalletCard from './WalletCard'
@@ -114,7 +114,7 @@ const formatCountryName = (country: string): string => {
 }
 
 export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
-  const { showToast } = useToast()
+  const { addToast } = useToast()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [rentals, setRentals] = useState<Rental[]>([])
@@ -326,53 +326,12 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
     }
   }
 
-  // Filter countries based on search
-  const getFilteredCountries = () => {
-    console.log('=== GET FILTERED COUNTRIES ===')
-    console.log('Available countries:', availableCountries.length)
-    console.log('Country search:', countrySearch)
-    console.log('Selected country:', selectedCountry)
-    
-    let filtered: string[]
-    
-    if (!countrySearch.trim()) {
-      // Show top 5 favorites if available, otherwise first 5
-      const favorites = ['usa', 'canada', 'england', 'nigeria', 'india']
-      const favoriteCountries = favorites.filter(c => availableCountries.includes(c))
-      
-      console.log('Favorites found:', favoriteCountries)
-      
-      if (favoriteCountries.length > 0) {
-        filtered = favoriteCountries
-      } else {
-        filtered = availableCountries.slice(0, 5)
-      }
-    } else {
-      // Filter by search term
-      const searchLower = countrySearch.toLowerCase()
-      filtered = availableCountries.filter(country => 
-        country.toLowerCase().includes(searchLower)
-      )
-    }
-    
-    console.log('Filtered countries:', filtered)
-    
-    // If selected country is not in filtered list, select the first one
-    if (filtered.length > 0 && !filtered.includes(selectedCountry)) {
-      console.log('Selected country not in filtered list, updating to:', filtered[0])
-      // Use setTimeout to avoid state update during render
-      setTimeout(() => setSelectedCountry(filtered[0]), 0)
-    }
-    
-    return filtered
-  }
-
   const buyNumber = async () => {
     if (!profile) return
     
     const currentPrice = getCurrentPrice()
     if (profile.balance_naira < currentPrice) {
-      showToast('warning', 'Insufficient Balance', `You need ₦${currentPrice} but have ₦${profile.balance_naira}`)
+      addToast(`Insufficient balance. You need ₦${currentPrice} but have ₦${profile.balance_naira}`, 'warning')
       return
     }
     
@@ -388,7 +347,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        showToast('error', 'Purchase Failed', error.message || 'Unable to connect to server')
+        addToast(`Purchase failed: ${error.message || 'Unable to connect to server'}`, 'error')
         return
       }
 
@@ -397,24 +356,23 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         await Promise.all([loadProfile(), loadOrders()])
         
         // Show success message with details
-        showToast('success', '🎉 Purchase Successful', `📱 ${data.phone_number} • Cost: ₦${data.cost} • Balance: ₦${data.remaining_balance}`)
+        addToast(`✅ Purchase successful! Phone: ${data.phone_number} • Cost: ₦${data.cost}`, 'success')
       } else {
         // Handle different error types with professional messaging
         let errorMessage = data.error || 'Unknown error occurred'
-        let toastType: 'error' | 'warning' = 'error'
         
         if (data.refunded) {
-          errorMessage = `${errorMessage} • ✅ Refund: ₦${data.cost || currentPrice} credited back`
-          toastType = 'warning'
+          errorMessage = `${errorMessage} • Refund: ₦${data.cost || currentPrice} credited back`
           // Refresh balance to show refund
           await loadProfile()
+          addToast(errorMessage, 'info')
+        } else {
+          addToast(errorMessage, 'error')
         }
-        
-        showToast(toastType, 'Purchase Failed', errorMessage)
       }
     } catch (error) {
       console.error('Error buying number:', error)
-      showToast('error', 'Purchase Failed', error instanceof Error ? error.message : 'Network error. Please try again.')
+      addToast(`Purchase failed: ${error instanceof Error ? error.message : 'Network error. Please try again.'}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -427,7 +385,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
     const totalCost = dailyRate * rentalDays
     
     if (profile.balance_naira < totalCost) {
-      showToast('warning', 'Insufficient Balance', `You need ₦${totalCost.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`)
+      addToast(`Insufficient balance. You need ₦${totalCost.toLocaleString()} but have ₦${profile.balance_naira.toLocaleString()}`, 'warning')
       return
     }
     
@@ -443,7 +401,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        showToast('error', 'Purchase Failed', error.message || 'Unable to connect to server')
+        addToast(`Purchase failed: ${error.message || 'Unable to connect to server'}`, 'error')
         return
       }
 
@@ -452,24 +410,23 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         await Promise.all([loadProfile(), loadRentals()])
         
         // Show success message with details
-        showToast('success', '🎉 Rental Activated', `📱 ${data.phone_number} • Duration: ${data.days} days • Cost: ₦${data.cost.toLocaleString()} • Balance: ₦${data.remaining_balance.toLocaleString()}`)
+        addToast(`✅ Rental activated! Phone: ${data.phone_number} • Duration: ${data.days} days`, 'success')
       } else {
         // Handle different error types with professional messaging
         let errorMessage = data.error || 'Unknown error occurred'
-        let toastType: 'error' | 'warning' = 'error'
         
         if (data.refunded) {
-          errorMessage = `${errorMessage} • ✅ Refund: ₦${data.cost || totalCost} credited back`
-          toastType = 'warning'
+          errorMessage = `${errorMessage} • Refund: ₦${data.cost || totalCost} credited back`
           // Refresh balance to show refund
           await loadProfile()
+          addToast(errorMessage, 'info')
+        } else {
+          addToast(errorMessage, 'error')
         }
-        
-        showToast(toastType, 'Purchase Failed', errorMessage)
       }
     } catch (error) {
       console.error('Error buying rental:', error)
-      showToast('error', 'Purchase Failed', error instanceof Error ? error.message : 'Network error. Please try again.')
+      addToast(`Purchase failed: ${error instanceof Error ? error.message : 'Network error. Please try again.'}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -477,7 +434,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
   const getFreeSMS = async () => {
     if (!selectedService || !selectedCountry) {
-      showToast('warning', 'Invalid Selection', 'Please select a service and country')
+      addToast('Please select a service and country', 'warning')
       return
     }
     
@@ -493,7 +450,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
 
       if (error) {
         console.error('Edge Function error:', error)
-        showToast('error', 'Request Failed', error.message || 'Unable to connect to server')
+        addToast(`Request failed: ${error.message || 'Unable to connect to server'}`, 'error')
         return
       }
 
@@ -502,13 +459,13 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
         await loadOrders()
         
         // Show success message with details
-        showToast('success', '🆓 Free Number Assigned', `📱 ${data.phone_number} • Cost: FREE • Send your OTP now!`)
+        addToast(`🆓 Free number assigned! Phone: ${data.phone_number}`, 'success')
       } else {
-        showToast('info', 'No Free Numbers', data.error || 'No free numbers available for this service/country combination')
+        addToast(data.error || 'No free numbers available for this service/country combination', 'info')
       }
     } catch (error) {
       console.error('Error getting free SMS:', error)
-      showToast('error', 'Request Failed', error instanceof Error ? error.message : 'Network error. Please try again.')
+      addToast(`Request failed: ${error instanceof Error ? error.message : 'Network error. Please try again.'}`, 'error')
     } finally {
       setLoading(false)
     }
@@ -569,7 +526,7 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
       }
     } catch (error) {
       console.error('Error buying eSIM:', error)
-      alert(`Purchase failed: ${error.message || 'Network error. Please try again.'}`)
+      alert(`Purchase failed: ${error instanceof Error ? error.message : 'Network error. Please try again.'}`)
     } finally {
       setLoading(false)
     }

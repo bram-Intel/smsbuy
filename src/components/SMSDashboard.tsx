@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { SupabaseClient } from '@supabase/supabase-js'
 import { Phone, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle } from 'lucide-react'
 import WalletCard from './WalletCard'
@@ -324,47 +324,6 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
       console.log('Setting default country to:', defaultCountry)
       setSelectedCountry(defaultCountry)
     }
-  }
-
-  // Filter countries based on search
-  const getFilteredCountries = () => {
-    console.log('=== GET FILTERED COUNTRIES ===')
-    console.log('Available countries:', availableCountries.length)
-    console.log('Country search:', countrySearch)
-    console.log('Selected country:', selectedCountry)
-    
-    let filtered: string[]
-    
-    if (!countrySearch.trim()) {
-      // Show top 5 favorites if available, otherwise first 5
-      const favorites = ['usa', 'canada', 'england', 'nigeria', 'india']
-      const favoriteCountries = favorites.filter(c => availableCountries.includes(c))
-      
-      console.log('Favorites found:', favoriteCountries)
-      
-      if (favoriteCountries.length > 0) {
-        filtered = favoriteCountries
-      } else {
-        filtered = availableCountries.slice(0, 5)
-      }
-    } else {
-      // Filter by search term
-      const searchLower = countrySearch.toLowerCase()
-      filtered = availableCountries.filter(country => 
-        country.toLowerCase().includes(searchLower)
-      )
-    }
-    
-    console.log('Filtered countries:', filtered)
-    
-    // If selected country is not in filtered list, select the first one
-    if (filtered.length > 0 && !filtered.includes(selectedCountry)) {
-      console.log('Selected country not in filtered list, updating to:', filtered[0])
-      // Use setTimeout to avoid state update during render
-      setTimeout(() => setSelectedCountry(filtered[0]), 0)
-    }
-    
-    return filtered
   }
 
   const buyNumber = async () => {
