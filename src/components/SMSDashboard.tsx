@@ -389,7 +389,19 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
           errorMessage = `Refund: ₦${data.cost || currentPrice} has been automatically credited back to your wallet.`
           // Refresh balance to show refund
           await loadProfile()
-          addToast(`✅ ${errorMessage}`, 'success')
+          
+          // Check if it's an insufficient balance error on provider side
+          if (errorMessage.toLowerCase().includes('insufficient') || 
+              errorMessage.toLowerCase().includes('balance') ||
+              errorMessage.toLowerCase().includes('low balance')) {
+            // Show custom message with Telegram link
+            const contactMessage = `⚠️ Service temporarily unavailable. Your payment of ₦${data.cost || currentPrice} has been refunded.\n\n💬 Contact support to activate your order:`
+            if (confirm(contactMessage + '\n\nClick OK to contact support on Telegram')) {
+              window.open(`https://t.me/bramkingnumber?text=Hi! I need to activate my order for ${selectedService} (${selectedCountry}). I've been refunded ₦${data.cost || currentPrice}. Please add balance and I'll try again.`, '_blank')
+            }
+          } else {
+            addToast(`✅ ${errorMessage}`, 'success')
+          }
         } else {
           addToast(`❌ ${errorMessage}`, 'error')
         }
@@ -444,7 +456,19 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
           errorMessage = `Refund: ₦${data.cost || totalCost} has been automatically credited back to your wallet.`
           // Refresh balance to show refund
           await loadProfile()
-          addToast(errorMessage, 'success')
+          
+          // Check if it's an insufficient balance error on provider side
+          if (errorMessage.toLowerCase().includes('insufficient') || 
+              errorMessage.toLowerCase().includes('balance') ||
+              errorMessage.toLowerCase().includes('low balance')) {
+            // Show custom message with Telegram link
+            const contactMessage = `⚠️ Service temporarily unavailable. Your payment of ₦${data.cost || totalCost} has been refunded.\n\n💬 Contact support to activate your rental:`
+            if (confirm(contactMessage + '\n\nClick OK to contact support on Telegram')) {
+              window.open(`https://t.me/bramkingnumber?text=Hi! I need to activate my rental for ${rentalCountry} (${rentalDays} days). I've been refunded ₦${data.cost || totalCost}. Please add balance and I'll try again.`, '_blank')
+            }
+          } else {
+            addToast(errorMessage, 'success')
+          }
         } else {
           addToast(errorMessage, 'error')
         }
@@ -546,7 +570,19 @@ export default function SMSDashboard({ supabase, user }: SMSDashboardProps) {
           errorMessage = `Refund: ₦${data.cost || totalCost} has been automatically credited back to your wallet.`
           // Refresh balance to show refund
           await loadProfile()
-          addToast(errorMessage, 'success')
+          
+          // Check if it's an insufficient balance error on provider side
+          if (errorMessage.toLowerCase().includes('insufficient') || 
+              errorMessage.toLowerCase().includes('balance') ||
+              errorMessage.toLowerCase().includes('low balance')) {
+            // Show custom message with Telegram link
+            const contactMessage = `⚠️ Service temporarily unavailable. Your payment of ₦${data.cost || totalCost} has been refunded.\n\n💬 Contact support to activate your eSIM:`
+            if (confirm(contactMessage + '\n\nClick OK to contact support on Telegram')) {
+              window.open(`https://t.me/bramkingnumber?text=Hi! I need to activate my eSIM for ${esimCountry} - ${esimData} (${esimDays} days). I've been refunded ₦${data.cost || totalCost}. Please add balance and I'll try again.`, '_blank')
+            }
+          } else {
+            addToast(errorMessage, 'success')
+          }
         } else {
           addToast(errorMessage, 'error')
         }
