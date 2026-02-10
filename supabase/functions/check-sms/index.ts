@@ -46,7 +46,17 @@ class FiveSIMAdapter {
   }
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const { order_id, user_id } = await req.json()
 
@@ -56,7 +66,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'Missing required fields: order_id, user_id'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -68,7 +78,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'API key not configured'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -93,7 +103,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'Order not found'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -105,7 +115,7 @@ Deno.serve(async (req) => {
           status: order.status,
           otp_code: order.otp_code
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -154,7 +164,7 @@ Deno.serve(async (req) => {
           timeout: true,
           refunded_amount: order.cost
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -170,7 +180,7 @@ Deno.serve(async (req) => {
           success: false,
           error: error.message || 'Failed to check SMS'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -193,7 +203,7 @@ Deno.serve(async (req) => {
           status: 'COMPLETED',
           otp_code: smsCode
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -204,7 +214,7 @@ Deno.serve(async (req) => {
         status: 'PENDING',
         message: 'No SMS received yet'
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error: any) {
@@ -214,7 +224,7 @@ Deno.serve(async (req) => {
         success: false,
         error: error.message || 'Internal server error'
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })

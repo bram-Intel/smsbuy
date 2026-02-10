@@ -27,7 +27,17 @@ class FiveSIMAdapter {
   }
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const { service, country, user_id } = await req.json()
 
@@ -37,7 +47,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'Missing required fields: service, country, user_id'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -49,7 +59,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'API key not configured'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -76,7 +86,7 @@ Deno.serve(async (req) => {
           error: 'Service not available for this country',
           refunded: false
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -95,7 +105,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'User profile not found'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -105,7 +115,7 @@ Deno.serve(async (req) => {
           success: false,
           error: `Insufficient balance. You need ₦${cost} but have ₦${profile.balance_naira}`
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -121,7 +131,7 @@ Deno.serve(async (req) => {
           success: false,
           error: 'Failed to deduct balance'
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -145,7 +155,7 @@ Deno.serve(async (req) => {
           refunded: true,
           cost: cost
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -182,7 +192,7 @@ Deno.serve(async (req) => {
           refunded: true,
           cost: cost
         }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -194,7 +204,7 @@ Deno.serve(async (req) => {
         order_id: order.id,
         cost: cost
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
 
   } catch (error: any) {
@@ -204,7 +214,7 @@ Deno.serve(async (req) => {
         success: false,
         error: error.message || 'Internal server error'
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
